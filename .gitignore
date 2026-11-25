@@ -1,0 +1,7 @@
+# Copyright (c) 2026, Drew. SPDX-License-Identifier: BSD-2-Clause
+.gradle/
+build/
+.idea/
+*.iml
+*.jar
+!gradle/wrapper/gradle-wrapper.jar

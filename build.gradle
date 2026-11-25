@@ -1,0 +1,53 @@
+// Copyright (c) 2026, Drew. SPDX-License-Identifier: BSD-2-Clause
+plugins { id 'java' }
+
+group = 'com.ayrasdoggies'
+version = '1.2.0'
+
+repositories {
+    maven {
+        url = 'https://repo.runelite.net'
+        content { includeGroupByRegex('net\\.runelite.*') }
+    }
+    mavenCentral()
+}
+
+def runeLiteVersion = providers.gradleProperty('runeliteVersion').getOrElse('1.13.8')
+
+dependencies {
+    compileOnly "net.runelite:client:${runeLiteVersion}"
+    testImplementation "net.runelite:client:${runeLiteVersion}"
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.mockito:mockito-core:4.11.0'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 11
+}
+
+tasks.register('run', JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.ayrasdoggies.AyrasDoggiesLauncher'
+    args '--developer-mode'
+    jvmArgs '-ea'
+}
+
+jar {
+    from('runelite-plugin.properties')
+    from('LICENSE')
+    manifest { attributes('Implementation-Version': project.version) }
+}
+
+tasks.register('release') {
+    dependsOn tasks.named('test'), tasks.named('jar')
+    def artifact = tasks.named('jar', Jar).flatMap { it.archiveFile }
+    inputs.file artifact
+    outputs.file layout.projectDirectory.file("ayras-doggies-${project.version}.jar")
+    doLast {
+        project.copy {
+            from artifact
+            into projectDir
+        }
+    }
+}
