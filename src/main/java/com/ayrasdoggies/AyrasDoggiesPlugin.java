@@ -45,8 +45,7 @@ import net.runelite.client.util.Text;
 @PluginDescriptor(
 	name = "Ayra's Doggies",
 	description = "Choose a dog and see opted-in RuneLite Party members as dogs outside the Wilderness",
-	tags = {"dog", "pet", "cosmetic", "transmog", "fun", "party"},
-	enabledByDefault = false
+	tags = {"dog", "pet", "cosmetic", "transmog", "fun", "party"}
 )
 public class AyrasDoggiesPlugin extends Plugin
 {
