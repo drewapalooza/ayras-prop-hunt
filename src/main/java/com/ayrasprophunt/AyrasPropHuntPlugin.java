@@ -1,5 +1,5 @@
 /* Copyright (c) 2026, Drew. SPDX-License-Identifier: BSD-2-Clause */
-package com.ayrasdoggies;
+package com.ayrasprophunt;
 
 import com.google.inject.Provides;
 import java.util.Collections;
@@ -43,11 +43,11 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.util.Text;
 
 @PluginDescriptor(
-	name = "Ayra's Doggies",
-	description = "Choose a dog and see opted-in RuneLite Party members as dogs outside the Wilderness",
-	tags = {"dog", "pet", "cosmetic", "transmog", "fun", "party"}
+	name = "Ayra's Prop Hunt",
+	description = "Become any catalogued NPC, scenery object, item, or model with a searchable picker",
+	tags = {"prop", "model", "cosmetic", "transmog", "search", "party"}
 )
-public class AyrasDoggiesPlugin extends Plugin
+public class AyrasPropHuntPlugin extends Plugin
 {
 	private static final long PRESENCE_TTL = 45_000_000_000L;
 	private static final int HEARTBEAT_TICKS = 20;
@@ -62,7 +62,7 @@ public class AyrasDoggiesPlugin extends Plugin
 	private RenderCallbackManager renderCallbacks;
 
 	@Inject
-	private AyrasDoggiesConfig config;
+	private AyrasPropHuntConfig config;
 
 	@Inject
 	private PartyService party;
@@ -74,8 +74,11 @@ public class AyrasDoggiesPlugin extends Plugin
 	private int ticksUntilSync;
 	private boolean advertised;
 	private LongSupplier nanoTime = System::nanoTime;
-	private final DogModelLoader models = new DogModelLoader();
-	private final Map<Player, DogActor> dogs = new IdentityHashMap<>();
+	private String renderStatus;
+	@Inject private ModelCatalog catalog;
+	@Inject private PropHuntUi ui;
+	private final PropModelLoader models = new PropModelLoader();
+	private final Map<Player, PropActor> actors = new IdentityHashMap<>();
 	private final Map<Long, Presence> appearances = new HashMap<>();
 	private final RenderCallback renderCallback = new RenderCallback()
 	{
@@ -87,8 +90,8 @@ public class AyrasDoggiesPlugin extends Plugin
 				return true;
 			}
 			Player player = (Player) renderable;
-			DogActor dog = dogs.get(player);
-			if (dog == null || !dog.isActive())
+			PropActor prop = actors.get(player);
+			if (prop == null || !prop.isActive())
 			{
 				return true;
 			}
@@ -101,9 +104,9 @@ public class AyrasDoggiesPlugin extends Plugin
 	};
 
 	@Provides
-	AyrasDoggiesConfig provideConfig(ConfigManager manager)
+	AyrasPropHuntConfig provideConfig(ConfigManager manager)
 	{
-		return manager.getConfig(AyrasDoggiesConfig.class);
+		return manager.getConfig(AyrasPropHuntConfig.class);
 	}
 
 	@Override
@@ -111,13 +114,14 @@ public class AyrasDoggiesPlugin extends Plugin
 	{
 		running = true;
 		long token = ++lifecycle;
+		ui.start(selectedEntry());
 		clientThread.invoke(() ->
 		{
 			if (!running || token != lifecycle)
 			{
 				return;
 			}
-			wsClient.registerMessage(DogAppearanceMessage.class);
+			wsClient.registerMessage(PropAppearanceMessage.class);
 			renderCallbacks.register(renderCallback);
 			broadcast(true);
 		});
@@ -128,10 +132,11 @@ public class AyrasDoggiesPlugin extends Plugin
 	{
 		running = false;
 		++lifecycle;
+		ui.stop();
 		clientThread.invoke(() ->
 		{
 			broadcast(false);
-			wsClient.unregisterMessage(DogAppearanceMessage.class);
+			wsClient.unregisterMessage(PropAppearanceMessage.class);
 			renderCallbacks.unregister(renderCallback);
 			resetScene();
 			appearances.clear();
@@ -141,7 +146,7 @@ public class AyrasDoggiesPlugin extends Plugin
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
-		if (!AyrasDoggiesConfig.GROUP.equals(event.getGroup()))
+		if (!AyrasPropHuntConfig.GROUP.equals(event.getGroup()))
 		{
 			return;
 		}
@@ -151,6 +156,7 @@ public class AyrasDoggiesPlugin extends Plugin
 			if (running && token == lifecycle)
 			{
 				broadcast(true);
+				ui.selection(selectedEntry());
 				onBeforeRender(new BeforeRender());
 			}
 		});
@@ -186,7 +192,7 @@ public class AyrasDoggiesPlugin extends Plugin
 		appearances.clear();
 		advertised = false;
 		ticksUntilSync = 0;
-		removeOtherDogs();
+		removeOtherProps();
 	}
 
 	@Subscribe
@@ -214,22 +220,22 @@ public class AyrasDoggiesPlugin extends Plugin
 	@Subscribe
 	public void onPlayerDespawned(PlayerDespawned event)
 	{
-		DogActor dog = dogs.remove(event.getPlayer());
-		if (dog != null)
+		PropActor prop = actors.remove(event.getPlayer());
+		if (prop != null)
 		{
-			dog.remove();
+			prop.remove();
 		}
 	}
 
 	@Subscribe
-	public void onDogAppearanceMessage(DogAppearanceMessage message)
+	public void onPropAppearanceMessage(PropAppearanceMessage message)
 	{
 		long token = lifecycle;
 		long partyId = party.getPartyId();
 		clientThread.invoke(() ->
 		{
 			if (!running || token != lifecycle || partyId != party.getPartyId()
-			|| !party.isInParty() || message == null || !message.isValid())
+			|| !party.isInParty() || message == null || !message.isValid(catalog))
 			{
 				return;
 			}
@@ -256,7 +262,7 @@ public class AyrasDoggiesPlugin extends Plugin
 				return;
 			}
 			appearances.put(message.getMemberId(), new Presence(Text.standardize(message.getPlayerName()),
-			message.getWorld(), message.getDog(), received));
+			message.getWorld(), message.getEntry(catalog), received));
 			}
 			else { appearances.remove(message.getMemberId());
 			}
@@ -271,13 +277,13 @@ public class AyrasDoggiesPlugin extends Plugin
 		{
 			return;
 		}
-		boolean active = enabled && running && config.shareAppearance() && client.getGameState() == GameState.LOGGED_IN;
+		boolean active = enabled && running && selectedEntry() != null && config.shareAppearance() && client.getGameState() == GameState.LOGGED_IN;
 		if (!active && !advertised)
 		{
 			return;
 		}
-		DogAppearanceMessage message = new DogAppearanceMessage(player.getName(), client.getWorld(), selectedDog(), active);
-		if (!message.isValid())
+		PropAppearanceMessage message = new PropAppearanceMessage(player.getName(), client.getWorld(), selectedEntry() == null ? catalog.defaultEntry() : selectedEntry(), active);
+		if (!message.isValid(catalog))
 		{
 			return;
 		}
@@ -288,7 +294,7 @@ public class AyrasDoggiesPlugin extends Plugin
 		}
 		catch (IllegalStateException ex)
 		{
-			/* A disconnected party never prevents local Ayra's Doggies. */
+			/* A disconnected party never prevents local Ayra's Prop Hunt. */
 		}
 	}
 
@@ -302,19 +308,20 @@ public class AyrasDoggiesPlugin extends Plugin
 		}
 		Set<Player> present = Collections.newSetFromMap(new IdentityHashMap<>());
 		Player local = client.getLocalPlayer();
-		if (local != null)
+		if (local != null && selectedEntry() != null)
 		{
-			updateDog(local, selectedDog(), present);
+			updateProp(local, selectedEntry(), present);
 		}
-		if (otherDogsAllowed())
+		else if (selectedEntry() == null) { status("Normal character"); }
+		if (otherPropsAllowed())
 		{
 			Set<WorldView> views = Collections.newSetFromMap(new IdentityHashMap<>());
 			updateWorld(client.getTopLevelWorldView(), views, present);
 		}
-		Iterator<Map.Entry<Player, DogActor>> iterator = dogs.entrySet().iterator();
+		Iterator<Map.Entry<Player, PropActor>> iterator = actors.entrySet().iterator();
 		while (iterator.hasNext())
 		{
-			Map.Entry<Player, DogActor> entry = iterator.next();
+			Map.Entry<Player, PropActor> entry = iterator.next();
 			if (!present.contains(entry.getKey()))
 			{
 				entry.getValue().remove();
@@ -336,10 +343,10 @@ public class AyrasDoggiesPlugin extends Plugin
 				{
 					continue;
 				}
-				DogModel choice = remoteDog(player);
+				ModelEntry choice = remoteEntry(player);
 				if (choice != null && !revealForInteraction(player))
 				{
-					updateDog(player, choice, present);
+					updateProp(player, choice, present);
 				}
 			}
 		}
@@ -353,7 +360,7 @@ public class AyrasDoggiesPlugin extends Plugin
 	}
 	private boolean canShowOther(Player player)
 	{
-		if (!otherDogsAllowed())
+		if (!otherPropsAllowed())
 		{
 			return false;
 		}
@@ -367,13 +374,13 @@ public class AyrasDoggiesPlugin extends Plugin
 		boolean wilderness = x >= 2944 && x < 3392 && (y >= 3520 && y < 4352 || y >= 9920 && y < 10752);
 		return !wilderness;
 	}
-	private boolean otherDogsAllowed()
+	private boolean otherPropsAllowed()
 	{
 		Set<WorldType> types = client.getWorldType();
 		boolean pvpWorld = types != null && (types.contains(WorldType.PVP) || types.contains(WorldType.DEADMAN)
 		|| types.contains(WorldType.BOUNTY) || types.contains(WorldType.PVP_ARENA)
 		|| types.contains(WorldType.LAST_MAN_STANDING) || types.contains(WorldType.TOURNAMENT_WORLD));
-		return config.showOtherDogs() && party.isInParty() && !pvpWorld
+		return config.showOtherProps() && party.isInParty() && !pvpWorld
 		&& client.getVarbitValue(VarbitID.INSIDE_WILDERNESS) == 0
 		&& client.getVarbitValue(VarbitID.PVP_AREA_CLIENT) == 0;
 	}
@@ -389,7 +396,7 @@ public class AyrasDoggiesPlugin extends Plugin
 		java.awt.Shape hull = player.getConvexHull();
 		return hull != null && hull.contains(mouse.getX(), mouse.getY());
 	}
-	private DogModel remoteDog(Player player)
+	private ModelEntry remoteEntry(Player player)
 	{
 		if (player.getName() == null)
 		{
@@ -405,16 +412,16 @@ public class AyrasDoggiesPlugin extends Plugin
 			&& presence.name.equals(name) && member != null
 			&& presence.name.equals(Text.standardize(member.getDisplayName())))
 			{
-				return presence.dog;
+				return presence.prop;
 			}
 		}
 		return null;
 	}
-	private DogModel selectedDog()
+	private ModelEntry selectedEntry()
 	{
-		return config.dog() == null ? DogModel.STRAY_DOG : config.dog();
+		return "NONE".equals(config.modelKey()) ? null : catalog.get(config.modelKey()) == null ? catalog.defaultEntry() : catalog.get(config.modelKey());
 	}
-	private void updateDog(Player player, DogModel choice, Set<Player> present)
+	private void updateProp(Player player, ModelEntry choice, Set<Player> present)
 	{
 		PlayerComposition appearance = player.getPlayerComposition();
 		LocalPoint point = player.getLocalLocation();
@@ -423,11 +430,11 @@ public class AyrasDoggiesPlugin extends Plugin
 		{
 			return;
 		}
-		DogActor actor = dogs.get(player);
-		if (actor != null && actor.getDogModel() != choice)
+		PropActor actor = actors.get(player);
+		if (actor != null && actor.getEntry() != choice)
 		{
 			actor.remove();
-			dogs.remove(player);
+			actors.remove(player);
 			actor = null;
 		}
 		if (actor == null)
@@ -435,19 +442,21 @@ public class AyrasDoggiesPlugin extends Plugin
 			Model model = models.load(client, choice);
 			if (model == null)
 			{
+				if (player == client.getLocalPlayer()) { status("Loading " + choice.name + " from the game cache…"); }
 				return;
 			}
-			actor = new DogActor(client, choice, model);
-			dogs.put(player, actor);
+			actor = new PropActor(client, choice, model);
+			actors.put(player, actor);
 		}
 		if (actor.update(client, player))
 		{
 			present.add(player);
+			if (player == client.getLocalPlayer()) { status(choice.detail()); }
 		}
 	}
-	private void removeOtherDogs()
+	private void removeOtherProps()
 	{
-		dogs.entrySet().removeIf(entry ->
+		actors.entrySet().removeIf(entry ->
 		{
 			if (entry.getKey() == client.getLocalPlayer())
 			{
@@ -457,23 +466,35 @@ public class AyrasDoggiesPlugin extends Plugin
 			return true;
 		});
 	}
+	private void status(String text)
+	{
+		if (!text.equals(renderStatus)) { renderStatus = text; ui.status(text); }
+	}
+
+	@Subscribe
+	public void onAnimationChanged(net.runelite.api.events.AnimationChanged event)
+	{
+		PropActor actor = actors.get(event.getActor());
+		if (actor != null) { actor.actionChanged(); }
+	}
+
 	private void resetScene()
 	{
-		dogs.values().forEach(DogActor::remove);
-		dogs.clear();
+		actors.values().forEach(PropActor::remove);
+		actors.clear();
 		models.clear();
 	}
 	private static final class Presence
 	{
 		final String name;
 		final int world;
-		final DogModel dog;
+		final ModelEntry prop;
 		final long received;
-		Presence(String name, int world, DogModel dog, long received)
+		Presence(String name, int world, ModelEntry prop, long received)
 		{
 			this.name = name;
 			this.world = world;
-			this.dog = dog;
+			this.prop = prop;
 			this.received = received;
 		}
 	}

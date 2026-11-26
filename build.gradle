@@ -1,8 +1,8 @@
 // Copyright (c) 2026, Drew. SPDX-License-Identifier: BSD-2-Clause
 plugins { id 'java' }
 
-group = 'com.ayrasdoggies'
-version = '1.2.0'
+group = 'com.ayrasprophunt'
+version = '2.0.0'
 
 repositories {
     maven {
@@ -28,9 +28,15 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.register('run', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
-    mainClass = 'com.ayrasdoggies.AyrasDoggiesLauncher'
+    mainClass = 'com.ayrasprophunt.AyrasPropHuntLauncher'
     args '--developer-mode'
     jvmArgs '-ea'
+}
+
+tasks.register('preview', JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.ayrasprophunt.PropHuntPickerPreview'
+    jvmArgs '-Djava.awt.headless=true'
 }
 
 jar {
@@ -43,7 +49,7 @@ tasks.register('release') {
     dependsOn tasks.named('test'), tasks.named('jar')
     def artifact = tasks.named('jar', Jar).flatMap { it.archiveFile }
     inputs.file artifact
-    outputs.file layout.projectDirectory.file("ayras-doggies-${project.version}.jar")
+    outputs.file layout.projectDirectory.file("ayras-prop-hunt-${project.version}.jar")
     doLast {
         project.copy {
             from artifact

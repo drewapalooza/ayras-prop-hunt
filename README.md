@@ -1,119 +1,113 @@
 <!-- Copyright (c) 2026, Drew. SPDX-License-Identifier: BSD-2-Clause -->
-# Ayra's Doggies
+# Ayra's Prop Hunt
 
 Just a fun little mod for people who got that dog in them.
 
-Choose a dog, become a dog, and see your opted-in RuneLite Party friends as dogs.
+Become Zuk, a bench, a chicken, or any other model in the bundled game catalog.
+This is a cosmetic character replacement with optional RuneLite Party sharing.
 
-## Choose your dog
+![Actual searchable sidebar](docs/model-picker.png)
 
-Enable **Ayra's Doggies**, open its settings cog, and use **Your dog**. The choice updates
-immediately and is saved in your RuneLite profile.
+## Pick a model
 
-The picker contains **110 appearances**, verified from the current game cache:
+1. Enable **Ayra's Prop Hunt** and click its **box icon** in RuneLite's sidebar.
+2. Type a name such as `Zuk`, `bench`, or `chicken` into **Search models**.
+3. Choose a result and click **Become selected model**, double-click it, or press Enter.
 
-- All **12 breeds from A Ruff Situation**, each with three adult coats and three
-  puppy coats: **72 choices**. These include Labrador, Chihuahua, Border Collie,
-  Corgi, Greyhound, Husky, Pug, Samoyed, Bernese Mountain Dog, Shiba, Spaniel, and Yorkie.
-- Stray dogs (including the clean quest variant), classic dogs, guard dogs,
-  bloodhound, sitting/sleeping sheepdogs, Varlamore breeds, named dogs, seasonal
-  dogs, and supernatural hounds.
+The dropdown has been replaced by a searchable list with **All / NPC / Props /
+Items / Raw** filters. Down Arrow moves from the search field into the results;
+Enter applies the highlighted result. Model names, types, catalog numbers, and
+whether an animation is available are shown in each row. Search work runs off
+the game and UI threads. The list shows at most 250 results at once; refine your
+search or include a catalog number to find a particular variant.
 
-Each appearance uses its own verified idle/walk animations, coloring, lighting,
-model parts, and native scale. Sitting and sleeping dogs stay seated/asleep while
-moving; those models have no walking sequence. Quest/POH copies with identical
-appearances are represented by a single picker entry where practical.
+Use **Return to your normal character** to remove your disguise. The chosen model
+is saved in your RuneLite profile and restored the next time you enable the plugin.
 
-## See your friends as dogs
+## Catalog and animations
 
-1. Everyone installs/enables this version of **Ayra's Doggies**.
-2. Enable RuneLite's built-in **Party** plugin and join the **same party passphrase**.
-3. Turn on **Share with party** and leave **Show party dogs** enabled in Ayra's Doggies settings.
-4. Meet on the same game world, outside the Wilderness.
+The current cache snapshot provides **168,077 searchable entries**:
 
-You see each opted-in party member as their selected dog. Other party members
-without Ayra's Doggies remain human. Appearance changes are sent immediately; initial
-connections or reconnects can take up to a heartbeat (about 12 seconds).
+| Kind | Entries |
+| --- | ---: |
+| NPCs | 17,000 |
+| Scenery objects and shape variants | 67,836 |
+| Item models | 20,167 |
+| Raw game meshes | 63,074 |
 
-Sharing currently works through **RuneLite Party**. It does not automatically
-discover every Ayra's Doggies user nearby. That broader discovery would require a
-separately hosted presence relay; none is deployed or required for this version.
-The plugin never creates a party or changes your existing party.
+Named variants and composed definitions can share underlying meshes. The raw
+category covers the complete model-index snapshot, including unnamed and partial
+meshes. Scenery variants preserve the relevant shape's parts, colors, textures,
+scale, offsets, and mirroring. No game meshes are bundled with the plugin: the
+metadata identifies models which RuneLite loads from the game's cache.
 
-Other players return to normal as soon as you enter the Wilderness, a PvP area, or a PvP/Deadman world. Players on
-the Wilderness side of the ditch also remain human when viewed from outside.
-Your own local dog remains enabled, including in the Wilderness. Other players'
-native overheads, names, health bars, and prayer icons remain intact.
+NPCs use their own idle, walking, and running sequences where defined. Matching
+attack animations are resolved from the game's named animation data and play
+when your character attacks; the real player's action animation is untouched.
+For example, Zuk uses Zuk's idle and attack, and chickens use their own walk and
+attack. Missing movement sequences fall back to that model's idle. Props without
+animations stay static and move with your character, as in prop hunt. Animated
+scenery keeps its own ambient animation.
 
-**Hover another player to reveal their original model and use the game's normal
-player interaction menu.** Move the cursor away to see their dog again. This
-preserves native trade/follow interactions without synthesizing game actions.
+Attack sequences are not universally specified in NPC definitions. Only known
+matching attacks are used; no arbitrary human animation is applied to an unknown
+rig. Raw meshes have no NPC animation assignment and stay static. Some raw
+entries are individual body parts, effects, or meshes intended for special engine
+rendering. If a mesh has not loaded yet, the original character remains visible
+until it is ready; a missing sequence can display its static mesh while loading.
+New game models require a regenerated metadata snapshot.
 
-Disabling sharing broadcasts an opt-out. Disabling Ayra's Doggies, leaving a party,
-logout, a world change, despawning, or expired presence removes the replacement.
-A client that disconnects without sending an opt-out expires after 45 seconds.
+## Party appearances
 
-Only your name, current world, chosen dog ID, and enabled state are sent to your
-current RuneLite Party. The plugin does not send coordinates, gear, stats, or
-combat data. It does not change other players on the game server: clients without
-Ayra's Doggies continue to see normal characters.
+Everyone must use **this version**, enable RuneLite's **Party** plugin, and join
+the same party passphrase. In Prop Hunt settings, turn on **Share with party**;
+sharing defaults to off. **Show party props** controls whether you see other
+opted-in members' selected models. Non-users stay human. No party is joined or
+changed automatically, and there is no global appearance relay.
 
-## Local behavior
+Other players' replacements are disabled in the Wilderness, PvP areas, and
+PvP/Deadman/Bounty/Arena/LMS/tournament worlds. Targets across the Wilderness ditch
+also remain human. Your own cosmetic model remains enabled. Hover a replaced
+player to reveal their original model for native player interactions.
 
-Your equipment, movement, skills, combat, and actual action animations continue
-normally. During actions the dog keeps its own idle/walk animation. Native NPC
-transformations (such as quest cutscenes) and death show the game's normal model.
-No game art is bundled; dog models load from the game's cache.
+Only your in-game name, world, selected catalog key, protocol version, and enabled
+state are shared with your current RuneLite Party. No coordinates, gear, chat,
+credentials, or combat data are transmitted. Opt-outs are immediate; disconnected
+clients expire after 45 seconds. Initial connections may take about 12 seconds.
+Older Doggies clients use a different protocol and must update.
 
-Plugin Hub submission is pending review.
+## Build and sideload
 
-## Build and install
-
-Requires JDK 11 or newer (tested with JDK 17).
+Requires a JDK 11 or newer; tested with JDK 17.
 
 ```powershell
-git clone https://github.com/drewapalooza/ayras-doggies.git
-cd ayras-doggies
 .\gradlew.bat test release
 ```
 
-Produces `ayras-doggies-1.2.0.jar` here and in `build/libs/`. Place it in
-`%USERPROFILE%\.runelite\sideloaded-plugins`, keep only one active Ayra's Doggies JAR,
-and restart your developer client. Stock RuneLite's normal launcher does not
-load sideloaded JARs.
+The release is `ayras-prop-hunt-2.0.0.jar`. Close your developer client and run
+`.\tools\Install-PropHunt.ps1` to install it and disable older Dog Mode/Doggies builds.
+Restart RuneLite, enable **Ayra's Prop Hunt**, and open the box sidebar icon.
+The stock RuneLite launcher does not load sideloaded JARs.
 
-Or close the dev client and run `.\tools\Install-DogMode.ps1`. This verifies the
-new JAR, disables older Ayra's Doggies versions, and installs the update. If the running
-client still has an old JAR locked, the installer leaves the update staged.
+For source development, temporarily disable the installed Prop Hunt JAR to avoid
+loading the same plugin twice, then use `.\gradlew.bat run`.
 
-For the source launcher, temporarily remove/disable the installed Ayra's Doggies JAR
-so it cannot load alongside the built-in source version, then run:
+`.\gradlew.bat preview` renders the actual searchable sidebar offline. Tests cover
+catalog completeness, searching and keyboard selection, static props, model
+animation choices, attack replay, opt-in/out, message validation, world/PvP
+restrictions, expiry, loading, and lifecycle cleanup. Live in-game visual and
+two-client multiplayer verification remain necessary.
 
-```powershell
-.\gradlew.bat run
-```
+## Catalog maintenance
 
-To build against another RuneLite release, add `-PruneliteVersion=<version>`.
-
-## Verification and catalog maintenance
-
-Automated checks cover all 72 quest variants, per-model animations, malformed
-network messages, chosen-dog updates, per-member opt-in, name matching, world
-matching, Wilderness boundaries, hover interactions, stale presence, party
-changes, loading, and cleanup. Live multiplayer and visual verification are
-still needed.
-
-The model/animation metadata was inspected read-only from the local Jagex cache.
-To regenerate it, first save `javap -constants net.runelite.api.gameval.NpcID`
-output to `build/dog-catalog/npc-ids.txt`, then run from this folder:
+The catalog is generated read-only using RuneLite's cache decoder. The tool is a
+separate developer project whose dependencies are excluded from the plugin JAR:
 
 ```powershell
-node tools/catalog-dogs.cjs <cache-directory> <Gradle-lib/ant-1.10.14.jar>
-node tools/generate-dog-models.cjs
+.\gradlew.bat -p tools/catalog generate
 ```
 
-The tools use the cache layout documented by RuneLite's
-[cache module](https://github.com/runelite/runelite/tree/master/cache/src/main/java/net/runelite/cache).
-Rendering uses [RuneLiteObject](https://github.com/runelite/runelite/blob/master/runelite-api/src/main/java/net/runelite/api/RuneLiteObject.java)
-and [render callbacks](https://github.com/runelite/runelite/blob/master/runelite-client/src/main/java/net/runelite/client/callback/RenderCallback.java).
-Appearance sharing uses RuneLite's [PartyService](https://github.com/runelite/runelite/blob/master/runelite-client/src/main/java/net/runelite/client/party/PartyService.java).
+Use `-PcacheDir=<cache-directory>` for a different cache. Rebuild and test the plugin
+after regenerating. Runtime assets use RuneLite's public model and animation APIs.
+The unrestricted scope remains subject to the Plugin Hub's model-selection and
+cosmetic-content review; a successful build does not establish Hub acceptance.

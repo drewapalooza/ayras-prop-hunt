@@ -1,0 +1,28 @@
+// Copyright (c) 2026, Drew. SPDX-License-Identifier: BSD-2-Clause
+// Offline developer tool only. These dependencies never enter the plugin build.
+plugins { id 'java' }
+repositories {
+    maven {
+        url = 'https://repo.runelite.net'
+        content { includeGroupByRegex('net\\.runelite.*') }
+    }
+    mavenCentral()
+}
+dependencies {
+    implementation 'net.runelite:cache:1.13.8'
+    implementation 'net.runelite:runelite-api:1.13.8'
+}
+sourceSets.main.java {
+    srcDirs = ['.']
+    include 'GeneratePropCatalog.java'
+}
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 11
+}
+tasks.register('generate', JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'GeneratePropCatalog'
+    args providers.gradleProperty('cacheDir').getOrElse("${System.getProperty('user.home')}/.runelite/jagexcache/oldschool/LIVE"),
+        file('../../src/main/resources/com/ayrasprophunt/models.bin.gz').absolutePath
+}

@@ -1,5 +1,5 @@
 /* Copyright (c) 2026, Drew. SPDX-License-Identifier: BSD-2-Clause */
-package com.ayrasdoggies;
+package com.ayrasprophunt;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -41,9 +41,10 @@ import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-public class AyrasDoggiesPluginTest
+public class AyrasPropHuntPluginTest
 {
-	private AyrasDoggiesPlugin plugin;
+	private static final ModelCatalog CATALOG = new ModelCatalog();
+	private AyrasPropHuntPlugin plugin;
 	private Client client;
 	private Player player;
 	private PlayerComposition appearance;
@@ -55,7 +56,7 @@ public class AyrasDoggiesPluginTest
 	private Animation walk;
 	private RenderCallbackManager callbacks;
 	private PartyService party;
-	private DogModel chosenDog = DogModel.STRAY_DOG;
+	private ModelEntry chosenEntry = CATALOG.defaultEntry();
 	private boolean showOthers = true;
 	private boolean sharing = true;
 	private final AtomicLong clock = new AtomicLong(1_000_000L);
@@ -66,7 +67,7 @@ public class AyrasDoggiesPluginTest
 	@Before
 	public void setUp() throws Exception
 	{
-		plugin = new AyrasDoggiesPlugin();
+		plugin = new AyrasPropHuntPlugin();
 		client = mock(Client.class);
 		player = mock(Player.class);
 		appearance = mock(PlayerComposition.class);
@@ -89,17 +90,19 @@ public class AyrasDoggiesPluginTest
 		inject("clientThread", thread);
 		inject("renderCallbacks", callbacks);
 		inject("party", party);
+		inject("catalog", CATALOG);
+		inject("ui", mock(PropHuntUi.class));
 		inject("wsClient", mock(WSClient.class));
 		inject("nanoTime", (java.util.function.LongSupplier) clock::get);
-		inject("config", new AyrasDoggiesConfig()
+		inject("config", new AyrasPropHuntConfig()
 		{
 		@Override
-		public DogModel dog()
+		public String modelKey()
 		{
-			return chosenDog;
+			return chosenEntry == null ? "NONE" : chosenEntry.key;
 		}
 		@Override
-		public boolean showOtherDogs()
+		public boolean showOtherProps()
 		{
 			return showOthers;
 		}
@@ -136,6 +139,7 @@ public class AyrasDoggiesPluginTest
 		when(client.mergeModels(any(ModelData[].class))).thenReturn(modelData);
 		when(modelData.cloneColors()).thenReturn(modelData);
 		when(modelData.cloneVertices()).thenReturn(modelData);
+		when(modelData.cloneTextures()).thenReturn(modelData);
 		when(modelData.light(anyInt(), anyInt(), anyInt(), anyInt(), anyInt())).thenReturn(mock(Model.class));
 		when(client.createRuneLiteObject()).thenAnswer(i ->
 		{
@@ -166,7 +170,7 @@ public class AyrasDoggiesPluginTest
 	}
 	private void inject(String name, Object value) throws Exception
 	{
-		Field field = AyrasDoggiesPlugin.class.getDeclaredField(name);
+		Field field = AyrasPropHuntPlugin.class.getDeclaredField(name);
 		field.setAccessible(true);
 		field.set(plugin, value);
 	}
@@ -201,22 +205,22 @@ public class AyrasDoggiesPluginTest
 	@Test
 	public void missingCachePartsNeverMakeThePlayerInvisibleAndRetryOnNextFrame()
 	{
-		when(client.loadModelData(102)).thenReturn(null);
+		when(client.loadModelData(CATALOG.defaultEntry().models[1])).thenReturn(null);
 		frame();
 		assertTrue(callbacks.addEntity(player, false));
 		verify(client, never()).createRuneLiteObject();
-		when(client.loadModelData(102)).thenReturn(modelData);
+		when(client.loadModelData(CATALOG.defaultEntry().models[1])).thenReturn(modelData);
 		frame();
 		assertFalse(callbacks.addEntity(player, false));
 	}
 
 	@Test
-	public void missingAnimationKeepsPlayerVisibleUntilItLoads()
+	public void missingAnimationUsesStaticMeshUntilItLoads()
 	{
 		when(client.loadAnimation(AnimationID.STRAYDOG_READY)).thenReturn(null);
 		frame();
-		assertTrue(callbacks.addEntity(player, false));
-		assertFalse(dogActive.get());
+		assertFalse(callbacks.addEntity(player, false));
+		assertTrue(dogActive.get());
 		when(client.loadAnimation(AnimationID.STRAYDOG_READY)).thenReturn(idle);
 		frame();
 		assertFalse(callbacks.addEntity(player, false));
@@ -330,12 +334,12 @@ public class AyrasDoggiesPluginTest
 		roster.add(friend);
 		return friend;
 	}
-	private void announce(String name, int worldId, DogModel choice, boolean enabled)
+	private void announce(String name, int worldId, ModelEntry choice, boolean enabled)
 	{
 		clock.addAndGet(600_000_000L);
-		DogAppearanceMessage message = new DogAppearanceMessage(name, worldId, choice, enabled);
+		PropAppearanceMessage message = new PropAppearanceMessage(name, worldId, choice, enabled);
 		message.setMemberId(2L);
-		plugin.onDogAppearanceMessage(message);
+		plugin.onPropAppearanceMessage(message);
 	}
 
 	@Test
@@ -344,11 +348,11 @@ public class AyrasDoggiesPluginTest
 		Player friend = partyFriend();
 		frame();
 		assertTrue(callbacks.addEntity(friend, false));
-		announce("Friend", 301, DogModel.STRAY_DOG, true);
+		announce("Friend", 301, CATALOG.defaultEntry(), true);
 		assertFalse(callbacks.addEntity(friend, false));
 		assertTrue(callbacks.addEntity(friend, true));
 		assertTrue(callbacks.addEntity(mock(Player.class), false));
-		announce("Friend", 301, DogModel.STRAY_DOG, false);
+		announce("Friend", 301, CATALOG.defaultEntry(), false);
 		assertTrue(callbacks.addEntity(friend, false));
 	}
 
@@ -356,7 +360,7 @@ public class AyrasDoggiesPluginTest
 	public void enteringWildernessRestoresOtherPlayersAndKeepsYourOwnDog()
 	{
 		Player friend = partyFriend();
-		announce("Friend", 301, DogModel.STRAY_DOG, true);
+		announce("Friend", 301, CATALOG.defaultEntry(), true);
 		assertFalse(callbacks.addEntity(friend, false));
 		when(client.getVarbitValue(VarbitID.INSIDE_WILDERNESS)).thenReturn(1);
 		// Even between frames the render callback stops hiding other players.
@@ -374,7 +378,7 @@ public class AyrasDoggiesPluginTest
 	{
 		Player friend = partyFriend();
 		when(friend.getWorldLocation()).thenReturn(new WorldPoint(3100, 3520, 0));
-		announce("Friend", 301, DogModel.STRAY_DOG, true);
+		announce("Friend", 301, CATALOG.defaultEntry(), true);
 		assertTrue(callbacks.addEntity(friend, false));
 		when(friend.getWorldLocation()).thenReturn(new WorldPoint(3100, 3519, 0));
 		frame();
@@ -385,12 +389,12 @@ public class AyrasDoggiesPluginTest
 	public void differentWorldsUnknownMembersAndSpoofedNamesAreRejected()
 	{
 		Player friend = partyFriend();
-		announce("Friend", 302, DogModel.STRAY_DOG, true);
+		announce("Friend", 302, CATALOG.defaultEntry(), true);
 		assertTrue(callbacks.addEntity(friend, false));
-		announce("SomebodyElse", 301, DogModel.STRAY_DOG, true);
+		announce("SomebodyElse", 301, CATALOG.defaultEntry(), true);
 		assertTrue(callbacks.addEntity(friend, false));
 		when(party.getMemberById(2L)).thenReturn(null);
-		announce("Friend", 301, DogModel.STRAY_DOG, true);
+		announce("Friend", 301, CATALOG.defaultEntry(), true);
 		assertTrue(callbacks.addEntity(friend, false));
 	}
 
@@ -398,15 +402,15 @@ public class AyrasDoggiesPluginTest
 	public void stalePresenceAndPartyDeparturesRestoreTheFriend()
 	{
 		Player friend = partyFriend();
-		announce("Friend", 301, DogModel.STRAY_DOG, true);
+		announce("Friend", 301, CATALOG.defaultEntry(), true);
 		clock.addAndGet(46_000_000_000L);
 		frame();
 		assertTrue(callbacks.addEntity(friend, false));
-		announce("Friend", 301, DogModel.STRAY_DOG, true);
+		announce("Friend", 301, CATALOG.defaultEntry(), true);
 		assertFalse(callbacks.addEntity(friend, false));
 		plugin.onUserPart(new UserPart(2L));
 		assertTrue(callbacks.addEntity(friend, false));
-		announce("Friend", 301, DogModel.STRAY_DOG, true);
+		announce("Friend", 301, CATALOG.defaultEntry(), true);
 		plugin.onPartyChanged(new PartyChanged("different", 101L));
 		assertTrue(callbacks.addEntity(friend, false));
 	}
@@ -415,7 +419,7 @@ public class AyrasDoggiesPluginTest
 	public void turningOffOtherDogsRestoresTheirModelsImmediately()
 	{
 		Player friend = partyFriend();
-		announce("Friend", 301, DogModel.STRAY_DOG, true);
+		announce("Friend", 301, CATALOG.defaultEntry(), true);
 		showOthers = false;
 		frame();
 		assertTrue(callbacks.addEntity(friend, false));
@@ -426,16 +430,16 @@ public class AyrasDoggiesPluginTest
 	{
 		partyFriend();
 		frame();
-		chosenDog = DogModel.LABRADOR_YELLOW;
-		when(client.loadAnimation(chosenDog.getIdle())).thenReturn(idle);
+		chosenEntry = CATALOG.get("NPC:16361:0");
+		when(client.loadAnimation(chosenEntry.idle)).thenReturn(idle);
 		ConfigChanged change = new ConfigChanged();
-		change.setGroup(AyrasDoggiesConfig.GROUP);
+		change.setGroup(AyrasPropHuntConfig.GROUP);
 		change.setKey("dog");
 		plugin.onConfigChanged(change);
-		verify(client).getNpcDefinition(chosenDog.getNpcId());
-		ArgumentCaptor<DogAppearanceMessage> message = ArgumentCaptor.forClass(DogAppearanceMessage.class);
+		verify(client).loadModelData(chosenEntry.models[0]);
+		ArgumentCaptor<PropAppearanceMessage> message = ArgumentCaptor.forClass(PropAppearanceMessage.class);
 		verify(party).send(message.capture());
-		assertSame(chosenDog, message.getValue().getDog());
+		assertSame(chosenEntry, message.getValue().getEntry(CATALOG));
 		assertTrue(message.getValue().isEnabled());
 	}
 
@@ -448,10 +452,10 @@ public class AyrasDoggiesPluginTest
 		clearInvocations(party);
 		sharing = false;
 		ConfigChanged change = new ConfigChanged();
-		change.setGroup(AyrasDoggiesConfig.GROUP);
+		change.setGroup(AyrasPropHuntConfig.GROUP);
 		change.setKey("shareAppearance");
 		plugin.onConfigChanged(change);
-		ArgumentCaptor<DogAppearanceMessage> message = ArgumentCaptor.forClass(DogAppearanceMessage.class);
+		ArgumentCaptor<PropAppearanceMessage> message = ArgumentCaptor.forClass(PropAppearanceMessage.class);
 		verify(party).send(message.capture());
 		assertFalse(message.getValue().isEnabled());
 		assertFalse(callbacks.addEntity(player, false));
@@ -460,21 +464,21 @@ public class AyrasDoggiesPluginTest
 	@Test
 	public void sharingIsOffByDefaultAndNoPresenceIsSentBeforeOptIn()
 	{
-		assertFalse(new AyrasDoggiesConfig()
+		assertFalse(new AyrasPropHuntConfig()
 		{
 		}
 		.shareAppearance());
 		partyFriend();
 		sharing = false;
 		plugin.onGameTick(new net.runelite.api.events.GameTick());
-		verify(party, never()).send(any(DogAppearanceMessage.class));
+		verify(party, never()).send(any(PropAppearanceMessage.class));
 	}
 
 	@Test
 	public void pvpWorldsAndPvpAreasAlwaysRestoreOtherPlayers()
 	{
 		Player friend = partyFriend();
-		announce("Friend", 301, DogModel.STRAY_DOG, true);
+		announce("Friend", 301, CATALOG.defaultEntry(), true);
 		when(client.getWorldType()).thenReturn(java.util.EnumSet.of(WorldType.PVP));
 		frame();
 		assertTrue(callbacks.addEntity(friend, false));
@@ -489,9 +493,9 @@ public class AyrasDoggiesPluginTest
 	public void aFriendUsesTheirOwnChosenDogAndDisappearsWhenTheyDespawn()
 	{
 		Player friend = partyFriend();
-		when(client.loadAnimation(DogModel.SHIBA_WHITE_PUPPY.getIdle())).thenReturn(idle);
-		announce("Friend", 301, DogModel.SHIBA_WHITE_PUPPY, true);
-		verify(client).getNpcDefinition(DogModel.SHIBA_WHITE_PUPPY.getNpcId());
+		when(client.loadAnimation(CATALOG.get("NPC:16461:0").idle)).thenReturn(idle);
+		announce("Friend", 301, CATALOG.get("NPC:16461:0"), true);
+		verify(client).loadModelData(CATALOG.get("NPC:16461:0").models[0]);
 		assertFalse(callbacks.addEntity(friend, false));
 		roster.clear();
 		frame();
@@ -504,7 +508,7 @@ public class AyrasDoggiesPluginTest
 	{
 		Player friend = partyFriend();
 		when(friend.getConvexHull()).thenReturn(new java.awt.Rectangle(100, 100, 60, 100));
-		announce("Friend", 301, DogModel.STRAY_DOG, true);
+		announce("Friend", 301, CATALOG.defaultEntry(), true);
 		assertFalse(callbacks.addEntity(friend, false));
 		when(client.getMouseCanvasPosition()).thenReturn(new net.runelite.api.Point(130, 150));
 		frame();
@@ -512,5 +516,22 @@ public class AyrasDoggiesPluginTest
 		when(client.getMouseCanvasPosition()).thenReturn(new net.runelite.api.Point(500, 500));
 		frame();
 		assertFalse(callbacks.addEntity(friend, false));
+	}
+
+	@Test public void returningToNormalRestoresYourCharacterAndOptsOutOfSharing()
+	{
+		partyFriend();
+		plugin.onUserSync(new net.runelite.client.party.messages.UserSync());
+		plugin.onGameTick(new net.runelite.api.events.GameTick());
+		clearInvocations(party);
+		frame();
+		chosenEntry = null;
+		ConfigChanged change = new ConfigChanged();
+		change.setGroup(AyrasPropHuntConfig.GROUP); change.setKey("model");
+		plugin.onConfigChanged(change);
+		assertTrue(callbacks.addEntity(player, false));
+		ArgumentCaptor<PropAppearanceMessage> message = ArgumentCaptor.forClass(PropAppearanceMessage.class);
+		verify(party).send(message.capture());
+		assertFalse(message.getValue().isEnabled());
 	}
 }
