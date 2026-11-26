@@ -56,6 +56,7 @@ public class AyrasPropHuntPluginTest
 	private Animation walk;
 	private RenderCallbackManager callbacks;
 	private PartyService party;
+	private PropHuntUi ui;
 	private ModelEntry chosenEntry = CATALOG.defaultEntry();
 	private boolean showOthers = true;
 	private boolean sharing = true;
@@ -91,7 +92,8 @@ public class AyrasPropHuntPluginTest
 		inject("renderCallbacks", callbacks);
 		inject("party", party);
 		inject("catalog", CATALOG);
-		inject("ui", mock(PropHuntUi.class));
+		ui = mock(PropHuntUi.class);
+		inject("ui", ui);
 		inject("wsClient", mock(WSClient.class));
 		inject("nanoTime", (java.util.function.LongSupplier) clock::get);
 		inject("config", new AyrasPropHuntConfig()
@@ -224,6 +226,46 @@ public class AyrasPropHuntPluginTest
 		when(client.loadAnimation(AnimationID.STRAYDOG_READY)).thenReturn(idle);
 		frame();
 		assertFalse(callbacks.addEntity(player, false));
+	}
+
+	@Test public void brokenModelsKeepThePlayerVisibleAndDoNotThrowEveryFrame()
+	{
+		when(modelData.light(anyInt(), anyInt(), anyInt(), anyInt(), anyInt()))
+			.thenThrow(new IllegalArgumentException("Invalid model fixture"));
+		for (int i = 0; i < 5; i++) { frame(); }
+		assertTrue(callbacks.addEntity(player, false));
+		verify(client, never()).createRuneLiteObject();
+		verify(modelData, times(1)).light(anyInt(), anyInt(), anyInt(), anyInt(), anyInt());
+		verify(ui).status("Unable to render " + chosenEntry.name + ". Try another model.");
+
+		doReturn(mock(Model.class)).when(modelData).light(anyInt(), anyInt(), anyInt(), anyInt(), anyInt());
+		ConfigChanged change = new ConfigChanged();
+		change.setGroup(AyrasPropHuntConfig.GROUP); change.setKey("model");
+		plugin.onConfigChanged(change);
+		assertFalse(callbacks.addEntity(player, false));
+	}
+
+	@Test public void anActorUpdateFailureRemovesTheExistingProp()
+	{
+		frame();
+		when(player.getCurrentOrientation()).thenThrow(new IllegalStateException("Invalid actor fixture"));
+		frame();
+		assertFalse(dogActive.get());
+		assertTrue(callbacks.addEntity(player, false));
+		frame();
+		verify(player, times(2)).getCurrentOrientation();
+	}
+
+	@Test public void oneBrokenPartyModelDoesNotPreventOtherModelsRendering()
+	{
+		Player friend = partyFriend();
+		ModelEntry bench = CATALOG.get("OBJECT:1104:10");
+		when(client.loadModelData(bench.models[0])).thenThrow(new IllegalArgumentException("Invalid bench fixture"));
+		announce("Friend", 301, bench, true);
+		frame();
+		assertFalse(callbacks.addEntity(player, false));
+		assertTrue(callbacks.addEntity(friend, false));
+		verify(client, times(1)).loadModelData(bench.models[0]);
 	}
 
 	@Test

@@ -2,9 +2,9 @@
 # Close the developer RuneLite client before running this installer.
 $ErrorActionPreference = 'Stop'
 $propProject = Split-Path -Parent $PSScriptRoot
-$propSource = Join-Path $propProject 'ayras-prop-hunt-2.0.0.jar'
+$propSource = Join-Path $propProject 'ayras-prop-hunt-2.0.1.jar'
 $propFolder = Join-Path $env:USERPROFILE '.runelite\sideloaded-plugins'
-$propDestination = Join-Path $propFolder 'ayras-prop-hunt-2.0.0.jar'
+$propDestination = Join-Path $propFolder 'ayras-prop-hunt-2.0.1.jar'
 $propPending = "$propDestination.pending"
 
 if (-not (Test-Path -LiteralPath $propSource -PathType Leaf)) {
@@ -21,7 +21,7 @@ if ((Get-FileHash -LiteralPath $propSource -Algorithm SHA256).Hash -ne
 # the new version becomes active, so the next launch cannot load two versions.
 Get-ChildItem -LiteralPath $propFolder -File |
     Where-Object { $_.Name -match '^(dog-mode|ayras-doggies|ayras-prop-hunt)-.*\.jar$' } |
-    Where-Object { $_.Name -ne 'ayras-prop-hunt-2.0.0.jar' } |
+    Where-Object { $_.Name -ne 'ayras-prop-hunt-2.0.1.jar' } |
     ForEach-Object {
         $propDisabledName = $_.Name + '.disabled'
         if (Test-Path -LiteralPath (Join-Path $propFolder $propDisabledName)) {
@@ -31,4 +31,4 @@ Get-ChildItem -LiteralPath $propFolder -File |
         catch { throw 'Close your developer RuneLite client, then run this installer again. The update remains staged.' }
     }
 Move-Item -LiteralPath $propPending -Destination $propDestination -Force
-Write-Output "Ayra's Prop Hunt 2.0.0 installed. Restart your developer client and open the box icon in the sidebar."
+Write-Output "Ayra's Prop Hunt 2.0.1 installed. Restart your developer client and open the box icon in the sidebar."

@@ -84,7 +84,7 @@ Requires a JDK 11 or newer; tested with JDK 17.
 .\gradlew.bat test release
 ```
 
-The release is `ayras-prop-hunt-2.0.0.jar`. Close your developer client and run
+The release is `ayras-prop-hunt-2.0.1.jar`. Close your developer client and run
 `.\tools\Install-PropHunt.ps1` to install it and disable older Dog Mode/Doggies builds.
 Restart RuneLite, enable **Ayra's Prop Hunt**, and open the box sidebar icon.
 The stock RuneLite launcher does not load sideloaded JARs.
@@ -97,6 +97,24 @@ catalog completeness, searching and keyboard selection, static props, model
 animation choices, attack replay, opt-in/out, message validation, world/PvP
 restrictions, expiry, loading, and lifecycle cleanup. Live in-game visual and
 two-client multiplayer verification remain necessary.
+
+## Troubleshooting
+
+Version 2.0.1 fixes a rendering crash affecting untextured models: the client has
+no texture array for those meshes, and copying that absent array threw a null
+pointer exception. Both textured and untextured meshes now load correctly.
+
+If a model still throws during assembly or actor updates, your original character
+remains visible and the sidebar reports that it could not render. The plugin logs
+the model's name, catalog key, mesh IDs, and full exception once for that failed
+entry, instead of repeating it every frame. Change your selection/configuration,
+reload the scene, or re-enable the plugin to retry.
+
+Check your developer launcher's console output for `Unable to render prop`.
+Launchers that redirect output use their own log file; the Encounter Helpers
+launcher writes `build/encounter-launch.log` in its project folder. The usual
+RuneLite log directory is `%USERPROFILE%/.runelite/logs`, but it may not contain
+the current developer client's output.
 
 ## Catalog maintenance
 

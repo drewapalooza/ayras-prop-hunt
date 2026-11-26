@@ -2,8 +2,10 @@
 package com.ayrasprophunt;
 
 import com.google.inject.Provides;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -41,6 +43,8 @@ import net.runelite.client.party.messages.UserSync;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.util.Text;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @PluginDescriptor(
 	name = "Ayra's Prop Hunt",
@@ -49,6 +53,7 @@ import net.runelite.client.util.Text;
 )
 public class AyrasPropHuntPlugin extends Plugin
 {
+	private static final Logger log = LoggerFactory.getLogger(AyrasPropHuntPlugin.class);
 	private static final long PRESENCE_TTL = 45_000_000_000L;
 	private static final int HEARTBEAT_TICKS = 20;
 
@@ -79,6 +84,8 @@ public class AyrasPropHuntPlugin extends Plugin
 	@Inject private PropHuntUi ui;
 	private final PropModelLoader models = new PropModelLoader();
 	private final Map<Player, PropActor> actors = new IdentityHashMap<>();
+	// Keys can only come from the fixed catalog. Retry on selection/config or scene changes.
+	private final Set<String> failedModels = new HashSet<>();
 	private final Map<Long, Presence> appearances = new HashMap<>();
 	private final RenderCallback renderCallback = new RenderCallback()
 	{
@@ -155,6 +162,8 @@ public class AyrasPropHuntPlugin extends Plugin
 		{
 			if (running && token == lifecycle)
 			{
+				failedModels.clear();
+				renderStatus = null;
 				broadcast(true);
 				ui.selection(selectedEntry());
 				onBeforeRender(new BeforeRender());
@@ -437,21 +446,38 @@ public class AyrasPropHuntPlugin extends Plugin
 			actors.remove(player);
 			actor = null;
 		}
-		if (actor == null)
+		if (failedModels.contains(choice.key))
 		{
-			Model model = models.load(client, choice);
-			if (model == null)
-			{
-				if (player == client.getLocalPlayer()) { status("Loading " + choice.name + " from the game cache…"); }
-				return;
-			}
-			actor = new PropActor(client, choice, model);
-			actors.put(player, actor);
+			if (player == client.getLocalPlayer()) { status("Unable to render " + choice.name + ". Try another model."); }
+			return;
 		}
-		if (actor.update(client, player))
+		try
 		{
-			present.add(player);
-			if (player == client.getLocalPlayer()) { status(choice.detail()); }
+			if (actor == null)
+			{
+				Model model = models.load(client, choice);
+				if (model == null)
+				{
+					if (player == client.getLocalPlayer()) { status("Loading " + choice.name + " from the game cache…"); }
+					return;
+				}
+				actor = new PropActor(client, choice, model);
+				actors.put(player, actor);
+			}
+			if (actor.update(client, player))
+			{
+				present.add(player);
+				if (player == client.getLocalPlayer()) { status(choice.detail()); }
+			}
+		}
+		catch (RuntimeException ex)
+		{
+			actors.remove(player);
+			if (actor != null) { actor.remove(); }
+			failedModels.add(choice.key);
+			if (player == client.getLocalPlayer()) { status("Unable to render " + choice.name + ". Try another model."); }
+			log.warn("Unable to render prop {} ({}, model parts {}); keeping the normal player model",
+				choice.name, choice.key, Arrays.toString(choice.models), ex);
 		}
 	}
 	private void removeOtherProps()
@@ -483,6 +509,8 @@ public class AyrasPropHuntPlugin extends Plugin
 		actors.values().forEach(PropActor::remove);
 		actors.clear();
 		models.clear();
+		failedModels.clear();
+		renderStatus = null;
 	}
 	private static final class Presence
 	{

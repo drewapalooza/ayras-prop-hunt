@@ -28,7 +28,11 @@ final class PropModelLoader
 		}
 		ModelData data = client.mergeModels(parts);
 		if (data == null) { return null; }
-		data = data.cloneColors().cloneVertices().cloneTextures();
+		data = data.cloneVertices();
+		// Untextured meshes have no texture array. The client's clone methods
+		// dereference their buffers directly, so copy only buffers that exist.
+		if (data.getFaceColors() != null) { data = data.cloneColors(); }
+		if (data.getFaceTextures() != null) { data = data.cloneTextures(); }
 		for (int i = 0; i < entry.colors.length; i++) { data.recolor(entry.colors[i], entry.colorTo[i]); }
 		for (int i = 0; i < entry.textures.length; i++) { data.retexture(entry.textures[i], entry.textureTo[i]); }
 		if (entry.fullColor != -1 && data.getFaceColors() != null) { Arrays.fill(data.getFaceColors(), (short) entry.fullColor); }
