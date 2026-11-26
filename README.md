@@ -109,5 +109,8 @@ separate developer project whose dependencies are excluded from the plugin JAR:
 
 Use `-PcacheDir=<cache-directory>` for a different cache. Rebuild and test the plugin
 after regenerating. Runtime assets use RuneLite's public model and animation APIs.
-The unrestricted scope remains subject to the Plugin Hub's model-selection and
-cosmetic-content review; a successful build does not establish Hub acceptance.
+This is a developer-sideloaded plugin. RuneLite
+[closed and locked the original submission](https://github.com/runelite/plugin-hub/pull/21351#issuecomment-7178531985)
+under its restriction on plugins that significantly alter in-game content or
+assets. It is not distributed through the Plugin Hub; passing builds and tests
+do not constitute RuneLite/Jagex approval.

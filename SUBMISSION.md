@@ -1,6 +1,11 @@
 <!-- Copyright (c) 2026, Drew. SPDX-License-Identifier: BSD-2-Clause -->
 # Plugin Hub review notes: Ayra's Prop Hunt
 
+**Status:** RuneLite [closed and locked the original Doggies submission](https://github.com/runelite/plugin-hub/pull/21351#issuecomment-7178531985)
+under the rule against significant in-game content/asset changes. This broader
+Prop Hunt build is provided for developer sideloading. There is no active Hub
+submission or claim of RuneLite/Jagex approval for this version.
+
 This submission has expanded from Doggies into a searchable cosmetic model picker.
 The display name is **Ayra's Prop Hunt**. It does not implement competitive hide-and-seek
 rounds, NPC attack prediction, targeting assistance, or gameplay automation.
