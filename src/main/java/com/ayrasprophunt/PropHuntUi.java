@@ -26,7 +26,7 @@ class PropHuntUi
 		{
 			if (token != generation) { return; }
 			panel = new ModelPickerPanel(catalog, entry -> configs.setConfiguration(AyrasPropHuntConfig.GROUP, "model", entry == null ? "NONE" : entry.key), current);
-			navigation = NavigationButton.builder().tooltip("Ayra's Prop Hunt")
+			navigation = NavigationButton.builder().tooltip("Ayra's Character Transmog")
 				.icon(icon()).panel(panel).priority(8).build();
 			toolbar.addNavigation(navigation);
 		});

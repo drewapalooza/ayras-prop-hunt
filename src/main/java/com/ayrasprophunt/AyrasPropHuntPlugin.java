@@ -47,8 +47,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @PluginDescriptor(
-	name = "Ayra's Prop Hunt",
-	description = "Become any catalogued NPC, scenery object, item, or model with a searchable picker",
+	name = "Ayra's Character Transmog",
+	description = "Character model transmog with searchable NPCs, scenery, items, and raw meshes",
 	tags = {"prop", "model", "cosmetic", "transmog", "search", "party"}
 )
 public class AyrasPropHuntPlugin extends Plugin
@@ -303,7 +303,7 @@ public class AyrasPropHuntPlugin extends Plugin
 		}
 		catch (IllegalStateException ex)
 		{
-			/* A disconnected party never prevents local Ayra's Prop Hunt. */
+			/* A disconnected party never prevents the local character transmog. */
 		}
 	}
 

@@ -9,7 +9,7 @@ import net.runelite.client.config.ConfigItem;
 public interface AyrasPropHuntConfig extends Config
 {
 	String GROUP = "ayrasprophunt";
-	@ConfigItem(keyName = "model", name = "Selected model", description = "Choose a model in the Prop Hunt sidebar.", hidden = true)
+	@ConfigItem(keyName = "model", name = "Selected model", description = "Choose your character model in the Character Transmog sidebar.", hidden = true)
 	default String modelKey() { return ModelCatalog.DEFAULT_KEY; }
 	@ConfigItem(keyName = "shareAppearance", name = "Share with party", description = "Share your chosen prop and in-game name with your current RuneLite Party.", position = 1)
 	default boolean shareAppearance() { return false; }

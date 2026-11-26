@@ -68,7 +68,7 @@ public final class ModelPickerPanel extends PluginPanel
 		JPanel header = new JPanel();
 		header.setOpaque(false);
 		header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
-		JLabel title = new JLabel("AYRA'S PROP HUNT");
+		JLabel title = new JLabel("<html>AYRA'S CHARACTER<br>TRANSMOG</html>");
 		title.setForeground(new Color(245, 202, 145));
 		title.setFont(title.getFont().deriveFont(Font.BOLD, 15f));
 		header.add(title);

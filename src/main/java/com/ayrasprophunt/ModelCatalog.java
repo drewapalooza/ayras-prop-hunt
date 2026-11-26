@@ -43,7 +43,7 @@ public final class ModelCatalog
 				if (in.read() != -1) { throw new IOException("Trailing model catalog data"); }
 			}
 		}
-		catch (IOException ex) { throw new IllegalStateException("Cannot load Prop Hunt's model catalog", ex); }
+		catch (IOException ex) { throw new IllegalStateException("Cannot load the character transmog model catalog", ex); }
 	}
 
 	public ModelEntry get(String key) { return byKey.get(key); }

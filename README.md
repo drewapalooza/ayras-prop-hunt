@@ -1,16 +1,17 @@
 <!-- Copyright (c) 2026, Drew. SPDX-License-Identifier: BSD-2-Clause -->
-# Ayra's Prop Hunt
+# Ayra's Character Transmog
 
 Just a fun little mod for people who got that dog in them.
 
-Become Zuk, a bench, a chicken, or any other model in the bundled game catalog.
-This is a cosmetic character replacement with optional RuneLite Party sharing.
+Transmog your character into Zuk, a bench, a chicken, or another model in the
+searchable game catalog. This is a cosmetic character model replacement with
+optional RuneLite Party sharing. Previously named **Ayra's Prop Hunt**.
 
 ![Actual searchable sidebar](docs/model-picker.png)
 
 ## Pick a model
 
-1. Enable **Ayra's Prop Hunt** and click its **box icon** in RuneLite's sidebar.
+1. Enable **Ayra's Character Transmog** and click its **box icon** in RuneLite's sidebar.
 2. Type a name such as `Zuk`, `bench`, or `chicken` into **Search models**.
 3. Choose a result and click **Become selected model**, double-click it, or press Enter.
 
@@ -60,7 +61,7 @@ New game models require a regenerated metadata snapshot.
 ## Party appearances
 
 Everyone must use **this version**, enable RuneLite's **Party** plugin, and join
-the same party passphrase. In Prop Hunt settings, turn on **Share with party**;
+the same party passphrase. In Character Transmog settings, turn on **Share with party**;
 sharing defaults to off. **Show party props** controls whether you see other
 opted-in members' selected models. Non-users stay human. No party is joined or
 changed automatically, and there is no global appearance relay.
@@ -84,12 +85,12 @@ Requires a JDK 11 or newer; tested with JDK 17.
 .\gradlew.bat test release
 ```
 
-The release is `ayras-prop-hunt-2.0.1.jar`. Close your developer client and run
+The release is `ayras-prop-hunt-2.0.2.jar`. Close your developer client and run
 `.\tools\Install-PropHunt.ps1` to install it and disable older Dog Mode/Doggies builds.
-Restart RuneLite, enable **Ayra's Prop Hunt**, and open the box sidebar icon.
+Restart RuneLite, enable **Ayra's Character Transmog**, and open the box sidebar icon.
 The stock RuneLite launcher does not load sideloaded JARs.
 
-For source development, temporarily disable the installed Prop Hunt JAR to avoid
+For source development, temporarily disable the installed transmog JAR to avoid
 loading the same plugin twice, then use `.\gradlew.bat run`.
 
 `.\gradlew.bat preview` renders the actual searchable sidebar offline. Tests cover
